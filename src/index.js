@@ -11,26 +11,20 @@ app.use(express.json());
 
 const users = [];
 
-function checksExistsUserAccount(request, response, next) { 
-  /**
-   * Inicialmente pego o username atraves de desestruturacao do request.headers
-   */ 
-  const {username} = request.headers
-  /**
-   * Procuro o user e caso o mesmo nao exista quebro o fluxo retornando um json com status 400
-   */
+function checksExistsUserAccount(request, response, next) {    
+  const {username} = request.headers  
   const user = users.find((user)=> user.username===username)  
   if(!user){  
     return response.status(404).json({error: `User not found !!`})
   }  
   request.user = user
-  next()
+  return next()
 }
 
 
 app.post('/users', (request, response) => {
   const {name , username} = request.body
-  const user = users.find((user)=> user.username===username)  
+  const user = users.some((user)=> user.username===username)  
   if(user){
     return response.status(400).json({error: `username already exists`})
   }
@@ -46,58 +40,53 @@ app.post('/users', (request, response) => {
 
 app.get('/todos', checksExistsUserAccount, (request, response) => {  
   const {user} = request
-  const todos = users.find((user)=> user.username===user.username).todos  
-  response.status(200).json(todos)
+  
+  return response.json(user.todos)
 });
 
 app.post('/todos', checksExistsUserAccount, (request, response) => {
   const {user} = request
-  const {title,deadline} = request.body  
-  const index =  users.indexOf(user)  
-  const newTodo = {
+  const {title,deadline} = request.body    
+  
+  const todo = {
     id: uuidv4(),
     title,
     done: false,
     deadline: new Date(deadline),
     created_at: new Date()
   }  
-  users[index].todos.push(newTodo)
-  return response.status(201).json(newTodo)
+  user.todos.push(todo)
+  
+  return response.status(201).json(todo)
 });
 
 app.put('/todos/:id', checksExistsUserAccount, (request, response) => {  
   const {user} = request
-  const {id} =request.params
   const {title,deadline} = request.body  
-  const indexUser =  users.indexOf(user) 
-  const todo = users[indexUser].todos.find((todo)=>todo.id===id) 
+  const {id} =request.params
+  
+  const todo = user.todos.find(todo=>todo.id===id) 
   
   if(!todo){
     return response.status(404).json({error: `Todo not found !!`})
   }
-  const indexTodo = users[indexUser].todos.indexOf(todo)
-  
-   
-  users[indexUser].todos[indexTodo].title=title
-  users[indexUser].todos[indexTodo].deadline=new Date(deadline)
-  
-  return response.status(200).json(users[indexUser].todos[indexTodo])
+  todo.title=title
+  todo.deadline= new Date(deadline)  
+  return response.json(todo)
 });
 
 app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
   const {user} = request
   const {id} =request.params    
-  const indexUser =  users.indexOf(user) 
-  const todo = users[indexUser].todos.find((todo)=>todo.id===id) 
+  
+  const todo = user.todos.find((todo)=>todo.id===id) 
   
   if(!todo){
     return response.status(404).json({error: `Todo not found !!`})
   }
-  const indexTodo = users[indexUser].todos.indexOf(todo)  
-   
-  users[indexUser].todos[indexTodo].done=true  
+  todo.done=true
   
-  return response.status(204).json(users[indexUser].todos[indexTodo])
+  return response.json(todo)
 });
 
 app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
@@ -106,14 +95,15 @@ app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
   const indexUser =  users.indexOf(user) 
   const todo = users[indexUser].todos.find((todo)=>todo.id===id) 
   
-  if(!todo){
+  
+  if(!todo){    
     return response.status(404).json({error: `Todo not found !!`})
   }
   const indexTodo = users[indexUser].todos.indexOf(todo)  
    
   users[indexUser].todos.splice(indexTodo,1)
   
-  return response.status(204).json({message: 'Todo deleted'})
+  return response.status(204).send()
 });
 
 module.exports = app;
