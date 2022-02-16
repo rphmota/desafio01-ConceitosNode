@@ -1,41 +1,119 @@
 const express = require('express');
 const cors = require('cors');
 
-// const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+const { v4 } = require('uuid');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// const users = [];
+const users = [];
 
-function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+function checksExistsUserAccount(request, response, next) { 
+  /**
+   * Inicialmente pego o username atraves de desestruturacao do request.headers
+   */ 
+  const {username} = request.headers
+  /**
+   * Procuro o user e caso o mesmo nao exista quebro o fluxo retornando um json com status 400
+   */
+  const user = users.find((user)=> user.username===username)  
+  if(!user){  
+    return response.status(404).json({error: `User not found !!`})
+  }  
+  request.user = user
+  next()
 }
 
+
 app.post('/users', (request, response) => {
-  // Complete aqui
+  const {name , username} = request.body
+  const user = users.find((user)=> user.username===username)  
+  if(user){
+    return response.status(400).json({error: `username already exists`})
+  }
+  const newUser = {
+    id: uuidv4(),
+    name,
+    username,
+    todos: []
+  }
+  users.push(newUser)
+  response.status(201).send(newUser)
 });
 
-app.get('/todos', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+app.get('/todos', checksExistsUserAccount, (request, response) => {  
+  const {user} = request
+  const todos = users.find((user)=> user.username===user.username).todos  
+  response.status(200).json(todos)
 });
 
 app.post('/todos', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const {user} = request
+  const {title,deadline} = request.body  
+  const index =  users.indexOf(user)  
+  const newTodo = {
+    id: uuidv4(),
+    title,
+    done: false,
+    deadline: new Date(deadline),
+    created_at: new Date()
+  }  
+  users[index].todos.push(newTodo)
+  return response.status(201).json(newTodo)
 });
 
-app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+app.put('/todos/:id', checksExistsUserAccount, (request, response) => {  
+  const {user} = request
+  const {id} =request.params
+  const {title,deadline} = request.body  
+  const indexUser =  users.indexOf(user) 
+  const todo = users[indexUser].todos.find((todo)=>todo.id===id) 
+  
+  if(!todo){
+    return response.status(404).json({error: `Todo not found !!`})
+  }
+  const indexTodo = users[indexUser].todos.indexOf(todo)
+  
+   
+  users[indexUser].todos[indexTodo].title=title
+  users[indexUser].todos[indexTodo].deadline=new Date(deadline)
+  
+  return response.status(200).json(users[indexUser].todos[indexTodo])
 });
 
 app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const {user} = request
+  const {id} =request.params    
+  const indexUser =  users.indexOf(user) 
+  const todo = users[indexUser].todos.find((todo)=>todo.id===id) 
+  
+  if(!todo){
+    return response.status(404).json({error: `Todo not found !!`})
+  }
+  const indexTodo = users[indexUser].todos.indexOf(todo)  
+   
+  users[indexUser].todos[indexTodo].done=true  
+  
+  return response.status(204).json(users[indexUser].todos[indexTodo])
 });
 
 app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
-  // Complete aqui
+  const {user} = request
+  const {id} =request.params    
+  const indexUser =  users.indexOf(user) 
+  const todo = users[indexUser].todos.find((todo)=>todo.id===id) 
+  
+  if(!todo){
+    return response.status(404).json({error: `Todo not found !!`})
+  }
+  const indexTodo = users[indexUser].todos.indexOf(todo)  
+   
+  users[indexUser].todos.splice(indexTodo,1)
+  
+  return response.status(204).json({message: 'Todo deleted'})
 });
 
 module.exports = app;
